@@ -1,13 +1,13 @@
 const axios = require('axios')
 const cheerio = require('cheerio');
 const { children } = require('cheerio/lib/api/traversing');
+const { request } = require('express');
 const express = require('express')
 const connection = require('./connection')
 
 const port = process.env.PORT || 3000;
 
 const app = express()
-
 
 
 const base_url = 'https://www.myjobmag.co.ke'
@@ -52,6 +52,8 @@ function getPageURLs(url){
 
     }).then(() => {
         scrape()
+        currentpagejobs = []
+
     })
    
 }
@@ -64,35 +66,35 @@ function scrape(){
             console.log(job_page)
             axios(job_page)
                 .then(response => {
+                    // console.log("."+response.config.url)
                     const page_html = response.data
                     const $$ = cheerio.load(page_html)
-                    job_data = []
-                    job_data["company"] = $$('.job-industry').children().first().next().text().replace(/View Jobs at\s/, '')
-                    job_data["job_name"] = $$('.read-h1').children().first().text().trim()
-                    job_data["posted_at"] = $$('#posted-date').last().text().replace(/Posted:\s/, '')
-                    job_data["deadline"] = $$('.read-date-sec').children().first().next().text().replace(/Deadline:\s/, '')
+                    job_data = {}
+                    job_data["company"] = $$('.job-industry').children().first().next().text().replace(/View Jobs at\s/, '') //job_data["company"]
+                    job_data["job_title"] = $$('.read-h1').children().first().text().trim() //job_data["job_name"]
+                    job_data["posted_at"] = $$('#posted-date').last().text().replace(/Posted:\s/, '') //job_data["posted_at"]
+                    job_data["deadline"] = $$('.read-date-sec').children().first().next().text().replace(/Deadline:\s/, '') //job_data["deadline"]
 
-                    // console.log(job_data['job_name']+" ; "+job_data['posted_at']+" ; "+job_data['deadline'])
-                    // console.log(deadline)
                     job_data["job_type"] = $$('.job-key-info').children().first().children('.jkey-info').text()
                     job_data["qualification"] = $$('.job-key-info').children().first().next().children('.jkey-info').text()
                     job_data["experience"] = $$('.job-key-info').children().first().next().next().children('.jkey-info').text()
                     job_data["location"] = $$('.job-key-info').children().first().next().next().next().children('.jkey-info').text()
                     job_data["job_field"] = $$('.job-key-info').children().last().children('.jkey-info').text().trim()
+                    job_data["link"] = response.config.url
                     return job_data
-                    // console.log(job_data)
+                    console.log(job_data)
                 }).then((job_data) => {
-                    
-                    console.log('jobs', job_data)
-                    query = "INSERT INTO jobs SET ?"
-                    connection.query(query, job_data, (err) => {
+                    console.log(job_data)
+                    sql = "INSERT INTO jobs SET ?";
+                    connection.query(sql, job_data, (err, result) => {
                         if(err) throw err;
+                        // console.log(result)
                         console.log("record inserted!")
                     })
                 })
         })
     } else {
-        console.log(currentpagejobs)
+        // console.log(currentpagejobs)
         console.log('error')
     }
 }
